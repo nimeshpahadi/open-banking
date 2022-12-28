@@ -5,7 +5,7 @@ from PIL import Image
 
 
 class Product(models.Model):
-  product_id = models.CharField(max_length=120)
+  product_id = models.UUIDField(max_length=120)
   effective_from = models.DateField()
   effective_to = models.DateField()
   last_updated = models.DateField()

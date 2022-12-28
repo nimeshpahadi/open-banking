@@ -33,8 +33,8 @@ INSTALLED_APPS = [
 
   # Local
   'products',
-  'about',
-  'contact'
+  'contact',
+  'lendingrates'
 ]
 
 MIDDLEWARE = [
@@ -53,7 +53,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
   {
     'BACKEND': 'django.template.backends.django.DjangoTemplates',
-    'DIRS': [os.path.join(BASE_DIR, 'build')],
+    'DIRS': [os.path.join(BASE_DIR, 'templates')],
     'APP_DIRS': True,
     'OPTIONS': {
       'context_processors': [
@@ -75,7 +75,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
   'default': {
     'ENGINE': 'django.db.backends.postgresql',
-    'NAME': 'open_banking_2',
+    'NAME': 'ob_dev',
     'USER': 'ob_user',
     'PASSWORD': 'password',
     'HOST': 'localhost',
