@@ -2,29 +2,59 @@ from django.shortcuts import render
 from rest_framework import viewsets
 from .serializers import ProductSerializer
 from .models import Product
-from lendingrates.models import LendingRate
-from lendingrates.serializers import LendingRateSerializer
+from .models import LendingRate
+from .serializers import LendingRateSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
 
 @api_view()
-def productDetail(request, product_id):
-    """Retrieve a product by pk - product_id."""
+def productDetail(request, productId):
+    """Retrieve a product by pk - productId."""
     try:
-        product = Product.objects.get(product_id=product_id)
+        product = Product.objects.get(productId=productId)
     except Product.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
     productSerializer = ProductSerializer(product, context={'request': request}).data
-    lRModal = LendingRate.objects.filter(productId=product_id)
+    # for prod in productSerializer:
+    #     productDetail = {
+    #         "productId": prod['productId'],
+    #         "lastUpdated": prod['lastUpdated'],
+    #         "productCategory": prod['productCategory'],
+    #         "name": prod['name'],
+    #         "description": prod['description'],
+    #         "brand": prod['brand'],
+    #         "applicationUri": prod['applicationUri'],
+    #         "additionalInformation": {
+    #             "overviewUri": prod['additionalInformationOverviewUri'],
+    #             "termsUri": prod['additionalInformationTermsUri'],
+    #             "eligibilityUri": prod['additionalInformationEligibilityUri'],
+    #             "feesAndPricingUri": prod['additionalInformationFeesAndPricingUri'],
+    #             "bundleUri": prod['additionalInformationBundleUri'],
+    #         }
+    #     }
+    lRModal = LendingRate.objects.filter(productId=productId)
     lRSerializer = LendingRateSerializer(lRModal, context={'request': request}, many=True).data
-    result = {}
     lendingRates = []
+    checkDupLendRate = []
     depositRates = []
+    tierList = []
     for item in lRSerializer:
-        rate = item['rate']
+        lRDict = {
+            "lendingRateType": item['lendingRateType'],
+            "rate": item['rate'],
+            "comparisonRate": item['comparisonRate'],
+            "calculationFrequency": item['calculationFrequency'],
+            "applicationFrequency": item['applicationFrequency'],
+            "interestPaymentDue": item['interestPaymentDue'],
+            "repaymentType": item['repaymentType'],
+            "loanPurpose": item['loanPurpose'],
+            "tiersName": item['tiersName'],
+            "tiersUnitOfMeasure": item['tiersUnitOfMeasure'],
+            "tiersRateApplicationMethod": item['tiersRateApplicationMethod'],
+        }
         tiers = {
             "name": item['tiersName'],
             "unitOfMeasure": item['tiersUnitOfMeasure'],
@@ -32,37 +62,34 @@ def productDetail(request, product_id):
             "maximumValue": item['tiersMaximumValue'],
             "rateApplicationMethod": item['tiersRateApplicationMethod'],
         }
-        if result.get(rate):
-            result[rate].append(tiers)
+        formattedLendRate = {
+            "lendingRateType": item['lendingRateType'],
+            "rate": item['rate'],
+            "comparisonRate": item['comparisonRate'],
+            "calculationFrequency": item['calculationFrequency'],
+            "applicationFrequency": item['applicationFrequency'],
+            "interestPaymentDue": item['interestPaymentDue'],
+            "repaymentType": item['repaymentType'],
+            "loanPurpose": item['loanPurpose'],
+        }
+        if lRDict not in checkDupLendRate:
+            checkDupLendRate.append(lRDict)
+            tierList = [tiers]
+            formattedLendRate.update({"tiers": tierList})
+            lendingRates.append(formattedLendRate)
         else:
-            result[rate] = [tiers]
-
-    for key, value in result.items():
-        for item in lRSerializer:
-            if key == item['rate']:
-                lRDict = {
-                "lendingRateType": item['lendingRateType'],
-                "rate": item['rate'],
-                "comparisonRate": item['comparisonRate'],
-                "calculationFrequency": item['calculationFrequency'],
-                "applicationFrequency": item['applicationFrequency'],
-                "interestPaymentDue": item['interestPaymentDue'],
-                "repaymentType": item['repaymentType'],
-                "loanPurpose": item['loanPurpose'],
-                "tiers": value
-            }
-        lendingRates.append(lRDict)
+            tierList.append(tiers)
 
     productSerializer.update({"depositRates": depositRates})
     productSerializer.update({"lendingRates": lendingRates})
     product_data = {
         "data": productSerializer,
-        "links": {"self": "https://openbank.api.mystate.com.au/cds-au/v1/banking/products/" + product_id}
+        "links": {"self": "https://openbank.api.mystate.com.au/cds-au/v1/banking/products/" + productId}
     }
     return Response(product_data)
 
 @api_view(['GET', 'POST'])
-def product_list(request):
+def productList(request):
     """
  List  products, or create a new product.
  """
@@ -82,9 +109,9 @@ def product_list(request):
         
 
 @api_view(['PUT', 'DELETE'])
-def updateProduct(request, pk):
+def productUpdate(request, productId):
     try:
-        product = Product.objects.get(pk=pk)
+        product = Product.objects.get(pk=productId)
     except Product.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 

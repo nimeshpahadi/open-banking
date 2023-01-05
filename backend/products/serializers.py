@@ -1,11 +1,28 @@
 from rest_framework import serializers
 from .models import Product
+from .models import LendingRate
+
 
 class ProductSerializer(serializers.ModelSerializer):
   class Meta:
     model = Product
-    fields = ('product_id', 'effective_from', 'effective_to', 'last_updated',
-            'product_category', 'name', 'description', 'brand', 'brand_name', 'application_uri',
-            'is_tailored', 'additional_information_overview_uri', 'additional_information_terms_uri',
-            'additional_information_eligibility_uri', 'additional_information_fees_and_pricing_uri',
-            'additional_information_bundle_uri')
+    fields = ('productId', 'effectiveFrom', 'effectiveTo', 'lastUpdated',
+            'productCategory', 'name', 'description', 'brand', 'brandName', 'applicationUri',
+            'isTailored', 'additionalInformationOverviewUri', 'additionalInformationTermsUri',
+            'additionalInformationEligibilityUri', 'additionalInformationFeesAndPricingUri',
+            'additionalInformationBundleUri', 'additionalInfoAddOverviewUrisDesc',
+            'additionalInfoAddOverviewUrisAddInfoUri', 'additionalInfoAddTermsUrisDesc',
+            'additionalInfoAddTermsUrisAddlInfoUri', 'additionalInfoAddEligibilityUrisDesc',
+            'additionalInfoAddEligibilityUrisAddInfoUri', 'additionalInfoAddFeesAndPricingUrisDesc',
+            'additionalInfoAddFeesAndPricingUrisAddInfoUri', 'additionalInfoAddBundleUrisDesc',
+            'additionalInfoAddBundleUrisAddInfoUri')
+
+class LendingRateSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = LendingRate
+    fields = ('productId', 'lendingRateType', 'rate', 'comparisonRate', 'calculationFrequency', 
+            'applicationFrequency', 'interestPaymentDue', 'repaymentType', 'loanPurpose', 'tiersName', 
+            'tiersUnitOfMeasure', 'tiersMinimumValue', 'tiersMaximumValue', 'tiersRateApplicationMethod', 
+            'tiersApplicabilityConditionsAdditionalInfo', 'tiersApplicabilityConditionsAdditionalInfoUri', 
+            'tiersAdditionalInfo', 'tiersAdditionalInfoUri', 'additionalValue', 'additionalInfo', 
+            'additionalInfoUri', 'insertTime')
