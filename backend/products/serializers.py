@@ -6,16 +6,13 @@ from .models import LendingRate
 class ProductSerializer(serializers.ModelSerializer):
   class Meta:
     model = Product
-    fields = ('productId', 'effectiveFrom', 'effectiveTo', 'lastUpdated',
-            'productCategory', 'name', 'description', 'brand', 'brandName', 'applicationUri',
-            'isTailored', 'additionalInformationOverviewUri', 'additionalInformationTermsUri',
-            'additionalInformationEligibilityUri', 'additionalInformationFeesAndPricingUri',
-            'additionalInformationBundleUri', 'additionalInfoAddOverviewUrisDesc',
-            'additionalInfoAddOverviewUrisAddInfoUri', 'additionalInfoAddTermsUrisDesc',
-            'additionalInfoAddTermsUrisAddlInfoUri', 'additionalInfoAddEligibilityUrisDesc',
-            'additionalInfoAddEligibilityUrisAddInfoUri', 'additionalInfoAddFeesAndPricingUrisDesc',
-            'additionalInfoAddFeesAndPricingUrisAddInfoUri', 'additionalInfoAddBundleUrisDesc',
-            'additionalInfoAddBundleUrisAddInfoUri')
+    fields = ('productId', 'effectiveFrom', 'effectiveTo', 'lastUpdated', 'productCategory', 'name', 'description',
+              'brand', 'brandName', 'applicationUri', 'isTailored', 'additionalInformationOverviewUri', 
+              'additionalInformationTermsUri', 'additionalInformationEligibilityUri', 
+              'additionalInformationFeesAndPricingUri', 'additionalInformationBundleUri',
+              'additionalInformationAdditionalOverviewUri', 'additionalInformationAdditionalTermsUri',
+              'additionalInformationAdditionalEligibilityUri', 'additionalInformationAdditionalFeesAndPricingUri',
+              'additionalInformationAdditionalBundleUri')
 
 class LendingRateSerializer(serializers.ModelSerializer):
   class Meta:

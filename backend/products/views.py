@@ -9,6 +9,17 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
+# function to filter the null value from the dictionary
+def cleanNullTerms(d):
+    clean = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            nested = cleanNullTerms(v)
+            if len(nested.keys()) > 0:
+                clean[k] = nested
+        elif v is not None:
+            clean[k] = v
+    return clean
 @api_view()
 def productDetail(request, productId):
     """Retrieve a product by pk - productId."""
@@ -16,31 +27,34 @@ def productDetail(request, productId):
         product = Product.objects.get(productId=productId)
     except Product.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
-
-    productSerializer = ProductSerializer(product, context={'request': request}).data
-    # for prod in productSerializer:
-    #     productDetail = {
-    #         "productId": prod['productId'],
-    #         "lastUpdated": prod['lastUpdated'],
-    #         "productCategory": prod['productCategory'],
-    #         "name": prod['name'],
-    #         "description": prod['description'],
-    #         "brand": prod['brand'],
-    #         "applicationUri": prod['applicationUri'],
-    #         "additionalInformation": {
-    #             "overviewUri": prod['additionalInformationOverviewUri'],
-    #             "termsUri": prod['additionalInformationTermsUri'],
-    #             "eligibilityUri": prod['additionalInformationEligibilityUri'],
-    #             "feesAndPricingUri": prod['additionalInformationFeesAndPricingUri'],
-    #             "bundleUri": prod['additionalInformationBundleUri'],
-    #         }
-    #     }
+    prodSerializer = ProductSerializer(product, context={'request': request}).data
+    productDetail = {
+        "productId": prodSerializer['productId'],
+        "effectiveFrom": prodSerializer['effectiveFrom'],
+        "effectiveTo": prodSerializer['effectiveTo'],
+        "lastUpdated": prodSerializer['lastUpdated'],
+        "productCategory": prodSerializer['productCategory'],
+        "name": prodSerializer['name'],
+        "description": prodSerializer['description'],
+        "brand": prodSerializer['brand'],
+        "brandName": prodSerializer['brandName'],
+        "applicationUri": prodSerializer['applicationUri'],
+        "isTailored": prodSerializer['isTailored'],
+        "additionalInformation": {
+            "overviewUri": prodSerializer['additionalInformationOverviewUri'],
+            "termsUri": prodSerializer['additionalInformationTermsUri'],
+            "eligibilityUri": prodSerializer['additionalInformationEligibilityUri'],
+            "feesAndPricingUri": prodSerializer['additionalInformationFeesAndPricingUri'],
+            "bundleUri": prodSerializer['additionalInformationBundleUri'],
+        }
+    }
+    filterNullFromProductDetail = cleanNullTerms(productDetail)
     lRModal = LendingRate.objects.filter(productId=productId)
     lRSerializer = LendingRateSerializer(lRModal, context={'request': request}, many=True).data
     lendingRates = []
     checkDupLendRate = []
     depositRates = []
-    tierList = []
+    tiersList = []
     for item in lRSerializer:
         lRDict = {
             "lendingRateType": item['lendingRateType'],
@@ -54,6 +68,13 @@ def productDetail(request, productId):
             "tiersName": item['tiersName'],
             "tiersUnitOfMeasure": item['tiersUnitOfMeasure'],
             "tiersRateApplicationMethod": item['tiersRateApplicationMethod'],
+            "tiersApplicabilityConditionsAdditionalInfo": item['tiersApplicabilityConditionsAdditionalInfo'],
+            "tiersApplicabilityConditionsAdditionalInfoUri": item['tiersApplicabilityConditionsAdditionalInfoUri'],
+            "tiersAdditionalInfo": item['tiersAdditionalInfo'],
+            "tiersAdditionalInfoUri": item['tiersAdditionalInfoUri'],
+            "additionalValue": item['additionalValue'],
+            "additionalInfo": item['additionalInfo'],
+            "additionalInfoUri": item['additionalInfoUri'],
         }
         tiers = {
             "name": item['tiersName'],
@@ -61,7 +82,14 @@ def productDetail(request, productId):
             "minimumValue": item['tiersMinimumValue'],
             "maximumValue": item['tiersMaximumValue'],
             "rateApplicationMethod": item['tiersRateApplicationMethod'],
+            "applicabilityConditions": {
+                "additionalInfo": item['tiersApplicabilityConditionsAdditionalInfo'],
+                "additionalInfoUri": item['tiersApplicabilityConditionsAdditionalInfoUri'],
+            },
+            "additionalInfo": item['tiersAdditionalInfo'],
+            "additionalInfoUri": item['tiersAdditionalInfoUri'],
         }
+        filterNullFromTiers = cleanNullTerms(tiers)
         formattedLendRate = {
             "lendingRateType": item['lendingRateType'],
             "rate": item['rate'],
@@ -72,18 +100,27 @@ def productDetail(request, productId):
             "repaymentType": item['repaymentType'],
             "loanPurpose": item['loanPurpose'],
         }
+        filterNullFromLendingRate = cleanNullTerms(formattedLendRate)
+        additionalData = {
+            "additionalValue": item['additionalValue'],
+            "additionalInfo": item['additionalInfo'],
+            "additionalInfoUri": item['additionalInfoUri'],
+        }
+        filterNullFromAddData = cleanNullTerms(additionalData)
         if lRDict not in checkDupLendRate:
             checkDupLendRate.append(lRDict)
-            tierList = [tiers]
-            formattedLendRate.update({"tiers": tierList})
-            lendingRates.append(formattedLendRate)
+            tiersList = [filterNullFromTiers]
+            filterNullFromLendingRate['tiers'] = tiersList
+            for k, v in filterNullFromAddData.items():
+                filterNullFromLendingRate[k] = v
+            lendingRates.append(filterNullFromLendingRate)
         else:
-            tierList.append(tiers)
+            tiersList.append(filterNullFromTiers)
 
-    productSerializer.update({"depositRates": depositRates})
-    productSerializer.update({"lendingRates": lendingRates})
+    filterNullFromProductDetail['depositRates'] = depositRates
+    filterNullFromProductDetail['lendingRates'] = lendingRates
     product_data = {
-        "data": productSerializer,
+        "data": filterNullFromProductDetail,
         "links": {"self": "https://openbank.api.mystate.com.au/cds-au/v1/banking/products/" + productId}
     }
     return Response(product_data)
