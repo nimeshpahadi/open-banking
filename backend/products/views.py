@@ -20,13 +20,55 @@ def cleanNullTerms(d):
         elif v is not None:
             clean[k] = v
     return clean
+
+def errorCode(code, title, detail):
+    error = {
+            "errors": [
+                {
+                    "code": "urn:au-cds:error:cds-all:" + code,
+                    "title": title,
+                    "detail": detail,
+                    "meta": {}
+                }
+            ]
+        }
+    return error
+def custom404(request, exception=None):
+    error = {
+            "errors": [
+                {
+                    "code": "urn:au-cds:error:cds-all:Resource/NotFound",
+                    "title": "Resource Not Found",
+                    "detail": "No matching route",
+                    "meta": {}
+                }
+            ]
+        }
+    return error
 @api_view()
 def productDetail(request, productId):
     """Retrieve a product by pk - productId."""
+    headerXVersion = request.headers.get("x-v")
+    if not headerXVersion:
+        code = "Header/Missing"
+        title = "Missing Required Header"
+        detail = "x-v"
+        errorResponse = errorCode(code, title, detail)
+        return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
+    if headerXVersion != "3":
+        code = "Header/UnsupportedVersion"
+        title = "Unsupported Version"
+        detail = "Requested x-v version is not supported"
+        errorResponse = errorCode(code, title, detail)
+        return Response(errorResponse, status=status.HTTP_406_NOT_ACCEPTABLE)
     try:
         product = Product.objects.get(productId=productId)
     except Product.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        code = "Resource/Invalid"
+        title = "Invalid Resource"
+        detail = productId
+        errorResponse = errorCode(code, title, detail)
+        return Response(errorResponse, status=status.HTTP_404_NOT_FOUND)
     prodSerializer = ProductSerializer(product, context={'request': request}).data
     productDetail = {
         "productId": prodSerializer['productId'],
