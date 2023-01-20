@@ -44,7 +44,7 @@ def custom404(request, exception=None):
                 }
             ]
         }
-    return error
+    return Response(error, status=status.HTTP_404_NOT_FOUND)
 @api_view()
 def productDetail(request, productId):
     """Retrieve a product by pk - productId."""
