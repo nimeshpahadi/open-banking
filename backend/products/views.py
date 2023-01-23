@@ -11,15 +11,15 @@ from rest_framework import status
 
 # function to filter the null value from the dictionary
 def cleanNullTerms(d):
-    clean = {}
-    for k, v in d.items():
-        if isinstance(v, dict):
-            nested = cleanNullTerms(v)
-            if len(nested.keys()) > 0:
-                clean[k] = nested
-        elif v is not None:
-            clean[k] = v
-    return clean
+    if isinstance(d, dict):
+        return {
+            k: v 
+            for k, v in ((k, cleanNullTerms(v)) for k, v in d.items())
+            if v
+        }
+    if isinstance(d, list):
+        return [v for v in map(cleanNullTerms, d) if v]
+    return d
 
 def errorCode(code, title, detail):
     error = {
@@ -174,17 +174,64 @@ def productList(request):
  """
     if request.method == 'GET':
         products = Product.objects.all()
-
-        serializer = ProductSerializer(products, context={'request': request}, many=True)
-        
-        return Response(serializer.data)
+        productList = []
+        prodSerializer = ProductSerializer(products, context={'request': request}, many=True).data
+        for item in prodSerializer:
+            productDict = {
+                "productId": item['productId'],
+                "effectiveFrom": item['effectiveFrom'],
+                "effectiveTo": item['effectiveTo'],
+                "lastUpdated": item['lastUpdated'],
+                "productCategory": item['productCategory'],
+                "name": item['name'],
+                "description": item['description'],
+                "brand": item['brand'],
+                "brandName": item['brandName'],
+                "applicationUri": item['applicationUri'],
+                "isTailored": item['isTailored'],
+                "additionalInformation": {
+                    "overviewUri": item['additionalInformationOverviewUri'],
+                    "termsUri": item['additionalInformationTermsUri'],
+                    "eligibilityUri": item['additionalInformationEligibilityUri'],
+                    "feesAndPricingUri": item['additionalInformationFeesAndPricingUri'],
+                    "bundleUri": item['additionalInformationBundleUri'],
+                    "additionalOverviewUris": [
+                        {
+                            "additionalInfoUri": item['additionalInformationAdditionalOverviewUri']
+                        }
+                    ],
+                    "additionalTermsUris": [
+                        {
+                            "additionalInfoUri": item['additionalInformationAdditionalTermsUri']
+                        }
+                    ],
+                    "additionalEligibilityUris": [
+                        {
+                            "additionalInfoUri": item['additionalInformationAdditionalEligibilityUri']
+                        }
+                    ],
+                    "additionalFeesAndPricingUris": [
+                        {
+                            "additionalInfoUri": item['additionalInformationAdditionalFeesAndPricingUri']
+                        }
+                    ],
+                    "additionalBundleUris": [
+                        {
+                            "additionalInfoUri": item['additionalInformationAdditionalBundleUri']
+                        }
+                    ]
+                }
+            }
+            productList.append(productDict)
+        filterNullFromProductList = cleanNullTerms(productList)
+        return Response(filterNullFromProductList)
 
     elif request.method == 'POST':
-        serializer = ProductSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        prodSerializer = ProductSerializer(data=request.data)
+        if prodSerializer.is_valid():
+            prodSerializer.save()
+            return Response(prodSerializer.data, status=status.HTTP_201_CREATED)
+        return Response(prodSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
 
 @api_view(['PUT', 'DELETE'])
