@@ -33,6 +33,28 @@ def errorCode(code, title, detail):
             ]
         }
     return error
+# this method to be revisited for reusability
+def checkHeaderError(request):
+    headerXVersion = request.headers.get('x-v')
+    if 'x-v' not in request.headers:
+        code = "Header/Missing"
+        title = "Missing Required Header"
+        detail = "x-v"
+        errorResponse = errorCode(code, title, detail)
+        return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
+    if headerXVersion == "" or headerXVersion.isdigit() == False:
+        code = "Header/InvalidVersion"
+        title = "Invalid Version"
+        detail = "Invalid x-v Requested"
+        errorResponse = errorCode(code, title, detail)
+        return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
+    if headerXVersion != "3":
+        code = "Header/UnsupportedVersion"
+        title = "Unsupported Version"
+        detail = "Requested x-v version is not supported"
+        errorResponse = errorCode(code, title, detail)
+        return Response(errorResponse, status=status.HTTP_406_NOT_ACCEPTABLE)
+# this method to be revisited for 404 not found in the api response
 def custom404(request, exception=None):
     error = {
             "errors": [
@@ -47,12 +69,18 @@ def custom404(request, exception=None):
     return Response(error, status=status.HTTP_404_NOT_FOUND)
 @api_view()
 def productDetail(request, productId):
-    """Retrieve a product by pk - productId."""
-    headerXVersion = request.headers.get("x-v")
-    if not headerXVersion:
+    #checkHeaderError(request)
+    headerXVersion = request.headers.get('x-v')
+    if 'x-v' not in request.headers:
         code = "Header/Missing"
         title = "Missing Required Header"
         detail = "x-v"
+        errorResponse = errorCode(code, title, detail)
+        return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
+    if headerXVersion == "" or headerXVersion.isdigit() == False:
+        code = "Header/InvalidVersion"
+        title = "Invalid Version"
+        detail = "Invalid x-v Requested"
         errorResponse = errorCode(code, title, detail)
         return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
     if headerXVersion != "3":
@@ -169,10 +197,26 @@ def productDetail(request, productId):
 
 @api_view(['GET', 'POST'])
 def productList(request):
-    """
- List  products, or create a new product.
- """
     if request.method == 'GET':
+        headerXVersion = request.headers.get('x-v')
+        if 'x-v' not in request.headers:
+            code = "Header/Missing"
+            title = "Missing Required Header"
+            detail = "x-v"
+            errorResponse = errorCode(code, title, detail)
+            return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
+        if headerXVersion == "" or headerXVersion.isdigit() == False:
+            code = "Header/InvalidVersion"
+            title = "Invalid Version"
+            detail = "Invalid x-v Requested"
+            errorResponse = errorCode(code, title, detail)
+            return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
+        if headerXVersion != "3":
+            code = "Header/UnsupportedVersion"
+            title = "Unsupported Version"
+            detail = "Requested x-v version is not supported"
+            errorResponse = errorCode(code, title, detail)
+            return Response(errorResponse, status=status.HTTP_406_NOT_ACCEPTABLE)
         products = Product.objects.all()
         productList = []
         prodSerializer = ProductSerializer(products, context={'request': request}, many=True).data
