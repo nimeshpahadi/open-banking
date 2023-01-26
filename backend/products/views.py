@@ -189,11 +189,11 @@ def productDetail(request, productId):
 
     filterNullFromProductDetail['depositRates'] = depositRates
     filterNullFromProductDetail['lendingRates'] = lendingRates
-    product_data = {
+    productDetailData = {
         "data": filterNullFromProductDetail,
         "links": {"self": "https://openbank.api.mystate.com.au/cds-au/v1/banking/products/" + productId}
     }
-    return Response(product_data)
+    return Response(productDetailData, headers={'x-v': headerXVersion})
 
 @api_view(['GET', 'POST'])
 def productList(request):
@@ -268,7 +268,12 @@ def productList(request):
             }
             productList.append(productDict)
         filterNullFromProductList = cleanNullTerms(productList)
-        return Response(filterNullFromProductList)
+        productListData = {
+            "data": {
+                "products": filterNullFromProductList
+            }
+        }
+        return Response(productListData, headers={'x-v': headerXVersion})
 
     elif request.method == 'POST':
         prodSerializer = ProductSerializer(data=request.data)
