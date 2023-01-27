@@ -7,6 +7,7 @@ from .serializers import LendingRateSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 
 
 # function to filter the null value from the dictionary
@@ -33,7 +34,7 @@ def errorCode(code, title, detail):
             ]
         }
     return error
-# this method to be revisited for reusability
+# this function to be revisited for reusability
 def checkHeaderError(request):
     headerXVersion = request.headers.get('x-v')
     if 'x-v' not in request.headers:
@@ -67,6 +68,108 @@ def custom404(request, exception=None):
             ]
         }
     return Response(error, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET', 'POST'])
+def productList(request):
+    if request.method == 'GET':
+        headerXVersion = request.headers.get('x-v')
+        if 'x-v' not in request.headers:
+            code = "Header/Missing"
+            title = "Missing Required Header"
+            detail = "x-v"
+            errorResponse = errorCode(code, title, detail)
+            return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
+        if headerXVersion == "" or headerXVersion.isdigit() == False:
+            code = "Header/InvalidVersion"
+            title = "Invalid Version"
+            detail = "Invalid x-v Requested"
+            errorResponse = errorCode(code, title, detail)
+            return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
+        if headerXVersion != "3":
+            code = "Header/UnsupportedVersion"
+            title = "Unsupported Version"
+            detail = "Requested x-v version is not supported"
+            errorResponse = errorCode(code, title, detail)
+            return Response(errorResponse, status=status.HTTP_406_NOT_ACCEPTABLE)
+        paginator = PageNumberPagination()
+        paginator.page_size = 2
+        products = Product.objects.all()
+        result_page = paginator.paginate_queryset(products, request)
+        productList = []
+        prodSerializer = ProductSerializer(result_page, many=True).data
+        #prodSerializer = ProductSerializer(products, context={'request': request}, many=True).data
+        for item in prodSerializer:
+            productDict = {
+                "productId": item['productId'],
+                "effectiveFrom": item['effectiveFrom'],
+                "effectiveTo": item['effectiveTo'],
+                "lastUpdated": item['lastUpdated'],
+                "productCategory": item['productCategory'],
+                "name": item['name'],
+                "description": item['description'],
+                "brand": item['brand'],
+                "brandName": item['brandName'],
+                "applicationUri": item['applicationUri'],
+                "isTailored": item['isTailored'],
+                "additionalInformation": {
+                    "overviewUri": item['additionalInformationOverviewUri'],
+                    "termsUri": item['additionalInformationTermsUri'],
+                    "eligibilityUri": item['additionalInformationEligibilityUri'],
+                    "feesAndPricingUri": item['additionalInformationFeesAndPricingUri'],
+                    "bundleUri": item['additionalInformationBundleUri'],
+                    "additionalOverviewUris": [
+                        {
+                            "additionalInfoUri": item['additionalInformationAdditionalOverviewUri']
+                        }
+                    ],
+                    "additionalTermsUris": [
+                        {
+                            "additionalInfoUri": item['additionalInformationAdditionalTermsUri']
+                        }
+                    ],
+                    "additionalEligibilityUris": [
+                        {
+                            "additionalInfoUri": item['additionalInformationAdditionalEligibilityUri']
+                        }
+                    ],
+                    "additionalFeesAndPricingUris": [
+                        {
+                            "additionalInfoUri": item['additionalInformationAdditionalFeesAndPricingUri']
+                        }
+                    ],
+                    "additionalBundleUris": [
+                        {
+                            "additionalInfoUri": item['additionalInformationAdditionalBundleUri']
+                        }
+                    ]
+                }
+            }
+            productList.append(productDict)
+        filterNullFromProductList = cleanNullTerms(productList)
+        links = {
+            'prev': paginator.get_previous_link(),
+            'next': paginator.get_next_link()
+        }
+        filterNullFromLinks = cleanNullTerms(links)
+        productListData = {
+            "data": {
+                "products": filterNullFromProductList,
+                "links": filterNullFromLinks,
+                "meta": {
+                    "totalRecords": paginator.page.paginator.count,
+                    "totalPages": paginator.page_size
+                }
+            }
+        }
+        return Response(productListData, headers={'x-v': headerXVersion})
+
+    elif request.method == 'POST':
+        prodSerializer = ProductSerializer(data=request.data)
+        if prodSerializer.is_valid():
+            prodSerializer.save()
+            return Response(prodSerializer.data, status=status.HTTP_201_CREATED)
+        return Response(prodSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 @api_view()
 def productDetail(request, productId):
     #checkHeaderError(request)
@@ -194,94 +297,6 @@ def productDetail(request, productId):
         "links": {"self": "https://openbank.api.mystate.com.au/cds-au/v1/banking/products/" + productId}
     }
     return Response(productDetailData, headers={'x-v': headerXVersion})
-
-@api_view(['GET', 'POST'])
-def productList(request):
-    if request.method == 'GET':
-        headerXVersion = request.headers.get('x-v')
-        if 'x-v' not in request.headers:
-            code = "Header/Missing"
-            title = "Missing Required Header"
-            detail = "x-v"
-            errorResponse = errorCode(code, title, detail)
-            return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
-        if headerXVersion == "" or headerXVersion.isdigit() == False:
-            code = "Header/InvalidVersion"
-            title = "Invalid Version"
-            detail = "Invalid x-v Requested"
-            errorResponse = errorCode(code, title, detail)
-            return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
-        if headerXVersion != "3":
-            code = "Header/UnsupportedVersion"
-            title = "Unsupported Version"
-            detail = "Requested x-v version is not supported"
-            errorResponse = errorCode(code, title, detail)
-            return Response(errorResponse, status=status.HTTP_406_NOT_ACCEPTABLE)
-        products = Product.objects.all()
-        productList = []
-        prodSerializer = ProductSerializer(products, context={'request': request}, many=True).data
-        for item in prodSerializer:
-            productDict = {
-                "productId": item['productId'],
-                "effectiveFrom": item['effectiveFrom'],
-                "effectiveTo": item['effectiveTo'],
-                "lastUpdated": item['lastUpdated'],
-                "productCategory": item['productCategory'],
-                "name": item['name'],
-                "description": item['description'],
-                "brand": item['brand'],
-                "brandName": item['brandName'],
-                "applicationUri": item['applicationUri'],
-                "isTailored": item['isTailored'],
-                "additionalInformation": {
-                    "overviewUri": item['additionalInformationOverviewUri'],
-                    "termsUri": item['additionalInformationTermsUri'],
-                    "eligibilityUri": item['additionalInformationEligibilityUri'],
-                    "feesAndPricingUri": item['additionalInformationFeesAndPricingUri'],
-                    "bundleUri": item['additionalInformationBundleUri'],
-                    "additionalOverviewUris": [
-                        {
-                            "additionalInfoUri": item['additionalInformationAdditionalOverviewUri']
-                        }
-                    ],
-                    "additionalTermsUris": [
-                        {
-                            "additionalInfoUri": item['additionalInformationAdditionalTermsUri']
-                        }
-                    ],
-                    "additionalEligibilityUris": [
-                        {
-                            "additionalInfoUri": item['additionalInformationAdditionalEligibilityUri']
-                        }
-                    ],
-                    "additionalFeesAndPricingUris": [
-                        {
-                            "additionalInfoUri": item['additionalInformationAdditionalFeesAndPricingUri']
-                        }
-                    ],
-                    "additionalBundleUris": [
-                        {
-                            "additionalInfoUri": item['additionalInformationAdditionalBundleUri']
-                        }
-                    ]
-                }
-            }
-            productList.append(productDict)
-        filterNullFromProductList = cleanNullTerms(productList)
-        productListData = {
-            "data": {
-                "products": filterNullFromProductList
-            }
-        }
-        return Response(productListData, headers={'x-v': headerXVersion})
-
-    elif request.method == 'POST':
-        prodSerializer = ProductSerializer(data=request.data)
-        if prodSerializer.is_valid():
-            prodSerializer.save()
-            return Response(prodSerializer.data, status=status.HTTP_201_CREATED)
-        return Response(prodSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
 
 @api_view(['PUT', 'DELETE'])
 def productUpdate(request, productId):
