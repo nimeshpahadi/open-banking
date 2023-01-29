@@ -34,27 +34,21 @@ def errorCode(code, title, detail):
             ]
         }
     return error
-# this function to be revisited for reusability
+
 def checkHeaderError(request):
-    headerXVersion = request.headers.get('x-v')
+    headerXV = request.headers.get('x-v')
     if 'x-v' not in request.headers:
-        code = "Header/Missing"
-        title = "Missing Required Header"
-        detail = "x-v"
-        errorResponse = errorCode(code, title, detail)
+        errorResponse = errorCode('Header/Missing', 'Missing Required Header', 'x-v')
         return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
-    if headerXVersion == "" or headerXVersion.isdigit() == False:
-        code = "Header/InvalidVersion"
-        title = "Invalid Version"
-        detail = "Invalid x-v Requested"
-        errorResponse = errorCode(code, title, detail)
+    elif headerXV == "" or headerXV.isdigit() == False:
+        errorResponse = errorCode('Header/InvalidVersion', 'Invalid Version', 'Invalid x-v Requested')
         return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
-    if headerXVersion != "3":
-        code = "Header/UnsupportedVersion"
-        title = "Unsupported Version"
-        detail = "Requested x-v version is not supported"
-        errorResponse = errorCode(code, title, detail)
+    elif headerXV != "3":
+        errorResponse = errorCode('Header/UnsupportedVersion', 'Unsupported Version', 'Requested x-v version is not supported')
         return Response(errorResponse, status=status.HTTP_406_NOT_ACCEPTABLE)
+    else:
+        return True
+
 # this method to be revisited for 404 not found in the api response
 def custom404(request, exception=None):
     error = {
@@ -69,28 +63,10 @@ def custom404(request, exception=None):
         }
     return Response(error, status=status.HTTP_404_NOT_FOUND)
 
-@api_view(['GET', 'POST'])
-def productList(request):
-    if request.method == 'GET':
-        headerXVersion = request.headers.get('x-v')
-        if 'x-v' not in request.headers:
-            code = "Header/Missing"
-            title = "Missing Required Header"
-            detail = "x-v"
-            errorResponse = errorCode(code, title, detail)
-            return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
-        if headerXVersion == "" or headerXVersion.isdigit() == False:
-            code = "Header/InvalidVersion"
-            title = "Invalid Version"
-            detail = "Invalid x-v Requested"
-            errorResponse = errorCode(code, title, detail)
-            return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
-        if headerXVersion != "3":
-            code = "Header/UnsupportedVersion"
-            title = "Unsupported Version"
-            detail = "Requested x-v version is not supported"
-            errorResponse = errorCode(code, title, detail)
-            return Response(errorResponse, status=status.HTTP_406_NOT_ACCEPTABLE)
+@api_view()
+def getProducts(request):
+    hasHeaderError = checkHeaderError(request)
+    if hasHeaderError == True:
         paginator = PageNumberPagination()
         paginator.page_size = 2
         products = Product.objects.all()
@@ -147,6 +123,7 @@ def productList(request):
             productList.append(productDict)
         filterNullFromProductList = cleanNullTerms(productList)
         links = {
+            'self': request.build_absolute_uri(),
             'prev': paginator.get_previous_link(),
             'next': paginator.get_next_link()
         }
@@ -161,142 +138,129 @@ def productList(request):
                 }
             }
         }
-        return Response(productListData, headers={'x-v': headerXVersion})
+        return Response(productListData, headers={'x-v': request.headers.get('x-v')})
+    else:
+        return hasHeaderError
 
-    elif request.method == 'POST':
-        prodSerializer = ProductSerializer(data=request.data)
-        if prodSerializer.is_valid():
-            prodSerializer.save()
-            return Response(prodSerializer.data, status=status.HTTP_201_CREATED)
-        return Response(prodSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
+@api_view(['POST'])
+def createProduct(request):
+    prodSerializer = ProductSerializer(data=request.data)
+    if prodSerializer.is_valid():
+        prodSerializer.save()
+        return Response(prodSerializer.data, status=status.HTTP_201_CREATED)
+    return Response(prodSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view()
-def productDetail(request, productId):
-    #checkHeaderError(request)
-    headerXVersion = request.headers.get('x-v')
-    if 'x-v' not in request.headers:
-        code = "Header/Missing"
-        title = "Missing Required Header"
-        detail = "x-v"
-        errorResponse = errorCode(code, title, detail)
-        return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
-    if headerXVersion == "" or headerXVersion.isdigit() == False:
-        code = "Header/InvalidVersion"
-        title = "Invalid Version"
-        detail = "Invalid x-v Requested"
-        errorResponse = errorCode(code, title, detail)
-        return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
-    if headerXVersion != "3":
-        code = "Header/UnsupportedVersion"
-        title = "Unsupported Version"
-        detail = "Requested x-v version is not supported"
-        errorResponse = errorCode(code, title, detail)
-        return Response(errorResponse, status=status.HTTP_406_NOT_ACCEPTABLE)
-    try:
-        product = Product.objects.get(productId=productId)
-    except Product.DoesNotExist:
-        code = "Resource/Invalid"
-        title = "Invalid Resource"
-        detail = productId
-        errorResponse = errorCode(code, title, detail)
-        return Response(errorResponse, status=status.HTTP_404_NOT_FOUND)
-    prodSerializer = ProductSerializer(product, context={'request': request}).data
-    productDetail = {
-        "productId": prodSerializer['productId'],
-        "effectiveFrom": prodSerializer['effectiveFrom'],
-        "effectiveTo": prodSerializer['effectiveTo'],
-        "lastUpdated": prodSerializer['lastUpdated'],
-        "productCategory": prodSerializer['productCategory'],
-        "name": prodSerializer['name'],
-        "description": prodSerializer['description'],
-        "brand": prodSerializer['brand'],
-        "brandName": prodSerializer['brandName'],
-        "applicationUri": prodSerializer['applicationUri'],
-        "isTailored": prodSerializer['isTailored'],
-        "additionalInformation": {
-            "overviewUri": prodSerializer['additionalInformationOverviewUri'],
-            "termsUri": prodSerializer['additionalInformationTermsUri'],
-            "eligibilityUri": prodSerializer['additionalInformationEligibilityUri'],
-            "feesAndPricingUri": prodSerializer['additionalInformationFeesAndPricingUri'],
-            "bundleUri": prodSerializer['additionalInformationBundleUri'],
+def getProductDetails(request, productId):
+    hasHeaderError = checkHeaderError(request)
+    if hasHeaderError == True:
+        try:
+            product = Product.objects.get(productId=productId)
+        except Product.DoesNotExist:
+            code = "Resource/Invalid"
+            title = "Invalid Resource"
+            detail = productId
+            errorResponse = errorCode(code, title, detail)
+            return Response(errorResponse, status=status.HTTP_404_NOT_FOUND)
+        prodSerializer = ProductSerializer(product, context={'request': request}).data
+        productDetail = {
+            "productId": prodSerializer['productId'],
+            "effectiveFrom": prodSerializer['effectiveFrom'],
+            "effectiveTo": prodSerializer['effectiveTo'],
+            "lastUpdated": prodSerializer['lastUpdated'],
+            "productCategory": prodSerializer['productCategory'],
+            "name": prodSerializer['name'],
+            "description": prodSerializer['description'],
+            "brand": prodSerializer['brand'],
+            "brandName": prodSerializer['brandName'],
+            "applicationUri": prodSerializer['applicationUri'],
+            "isTailored": prodSerializer['isTailored'],
+            "additionalInformation": {
+                "overviewUri": prodSerializer['additionalInformationOverviewUri'],
+                "termsUri": prodSerializer['additionalInformationTermsUri'],
+                "eligibilityUri": prodSerializer['additionalInformationEligibilityUri'],
+                "feesAndPricingUri": prodSerializer['additionalInformationFeesAndPricingUri'],
+                "bundleUri": prodSerializer['additionalInformationBundleUri'],
+            }
         }
-    }
-    filterNullFromProductDetail = cleanNullTerms(productDetail)
-    lRModal = LendingRate.objects.filter(productId=productId)
-    lRSerializer = LendingRateSerializer(lRModal, context={'request': request}, many=True).data
-    lendingRates = []
-    checkDupLendRate = []
-    depositRates = []
-    tiersList = []
-    for item in lRSerializer:
-        lRDict = {
-            "lendingRateType": item['lendingRateType'],
-            "rate": item['rate'],
-            "comparisonRate": item['comparisonRate'],
-            "calculationFrequency": item['calculationFrequency'],
-            "applicationFrequency": item['applicationFrequency'],
-            "interestPaymentDue": item['interestPaymentDue'],
-            "repaymentType": item['repaymentType'],
-            "loanPurpose": item['loanPurpose'],
-            "tiersName": item['tiersName'],
-            "tiersUnitOfMeasure": item['tiersUnitOfMeasure'],
-            "tiersRateApplicationMethod": item['tiersRateApplicationMethod'],
-            "tiersApplicabilityConditionsAdditionalInfo": item['tiersApplicabilityConditionsAdditionalInfo'],
-            "tiersApplicabilityConditionsAdditionalInfoUri": item['tiersApplicabilityConditionsAdditionalInfoUri'],
-            "tiersAdditionalInfo": item['tiersAdditionalInfo'],
-            "tiersAdditionalInfoUri": item['tiersAdditionalInfoUri'],
-            "additionalValue": item['additionalValue'],
-            "additionalInfo": item['additionalInfo'],
-            "additionalInfoUri": item['additionalInfoUri'],
-        }
-        tiers = {
-            "name": item['tiersName'],
-            "unitOfMeasure": item['tiersUnitOfMeasure'],
-            "minimumValue": item['tiersMinimumValue'],
-            "maximumValue": item['tiersMaximumValue'],
-            "rateApplicationMethod": item['tiersRateApplicationMethod'],
-            "applicabilityConditions": {
-                "additionalInfo": item['tiersApplicabilityConditionsAdditionalInfo'],
-                "additionalInfoUri": item['tiersApplicabilityConditionsAdditionalInfoUri'],
-            },
-            "additionalInfo": item['tiersAdditionalInfo'],
-            "additionalInfoUri": item['tiersAdditionalInfoUri'],
-        }
-        filterNullFromTiers = cleanNullTerms(tiers)
-        formattedLendRate = {
-            "lendingRateType": item['lendingRateType'],
-            "rate": item['rate'],
-            "comparisonRate": item['comparisonRate'],
-            "calculationFrequency": item['calculationFrequency'],
-            "applicationFrequency": item['applicationFrequency'],
-            "interestPaymentDue": item['interestPaymentDue'],
-            "repaymentType": item['repaymentType'],
-            "loanPurpose": item['loanPurpose'],
-        }
-        filterNullFromLendingRate = cleanNullTerms(formattedLendRate)
-        additionalData = {
-            "additionalValue": item['additionalValue'],
-            "additionalInfo": item['additionalInfo'],
-            "additionalInfoUri": item['additionalInfoUri'],
-        }
-        filterNullFromAddData = cleanNullTerms(additionalData)
-        if lRDict not in checkDupLendRate:
-            checkDupLendRate.append(lRDict)
-            tiersList = [filterNullFromTiers]
-            filterNullFromLendingRate['tiers'] = tiersList
-            for k, v in filterNullFromAddData.items():
-                filterNullFromLendingRate[k] = v
-            lendingRates.append(filterNullFromLendingRate)
-        else:
-            tiersList.append(filterNullFromTiers)
+        filterNullFromProductDetail = cleanNullTerms(productDetail)
+        lRModal = LendingRate.objects.filter(productId=productId)
+        lRSerializer = LendingRateSerializer(lRModal, context={'request': request}, many=True).data
+        lendingRates = []
+        checkDupLendRate = []
+        depositRates = []
+        tiersList = []
+        for item in lRSerializer:
+            lRDict = {
+                "lendingRateType": item['lendingRateType'],
+                "rate": item['rate'],
+                "comparisonRate": item['comparisonRate'],
+                "calculationFrequency": item['calculationFrequency'],
+                "applicationFrequency": item['applicationFrequency'],
+                "interestPaymentDue": item['interestPaymentDue'],
+                "repaymentType": item['repaymentType'],
+                "loanPurpose": item['loanPurpose'],
+                "tiersName": item['tiersName'],
+                "tiersUnitOfMeasure": item['tiersUnitOfMeasure'],
+                "tiersRateApplicationMethod": item['tiersRateApplicationMethod'],
+                "tiersApplicabilityConditionsAdditionalInfo": item['tiersApplicabilityConditionsAdditionalInfo'],
+                "tiersApplicabilityConditionsAdditionalInfoUri": item['tiersApplicabilityConditionsAdditionalInfoUri'],
+                "tiersAdditionalInfo": item['tiersAdditionalInfo'],
+                "tiersAdditionalInfoUri": item['tiersAdditionalInfoUri'],
+                "additionalValue": item['additionalValue'],
+                "additionalInfo": item['additionalInfo'],
+                "additionalInfoUri": item['additionalInfoUri'],
+            }
+            tiers = {
+                "name": item['tiersName'],
+                "unitOfMeasure": item['tiersUnitOfMeasure'],
+                "minimumValue": item['tiersMinimumValue'],
+                "maximumValue": item['tiersMaximumValue'],
+                "rateApplicationMethod": item['tiersRateApplicationMethod'],
+                "applicabilityConditions": {
+                    "additionalInfo": item['tiersApplicabilityConditionsAdditionalInfo'],
+                    "additionalInfoUri": item['tiersApplicabilityConditionsAdditionalInfoUri'],
+                },
+                "additionalInfo": item['tiersAdditionalInfo'],
+                "additionalInfoUri": item['tiersAdditionalInfoUri'],
+            }
+            filterNullFromTiers = cleanNullTerms(tiers)
+            formattedLendRate = {
+                "lendingRateType": item['lendingRateType'],
+                "rate": item['rate'],
+                "comparisonRate": item['comparisonRate'],
+                "calculationFrequency": item['calculationFrequency'],
+                "applicationFrequency": item['applicationFrequency'],
+                "interestPaymentDue": item['interestPaymentDue'],
+                "repaymentType": item['repaymentType'],
+                "loanPurpose": item['loanPurpose'],
+            }
+            filterNullFromLendingRate = cleanNullTerms(formattedLendRate)
+            additionalData = {
+                "additionalValue": item['additionalValue'],
+                "additionalInfo": item['additionalInfo'],
+                "additionalInfoUri": item['additionalInfoUri'],
+            }
+            filterNullFromAddData = cleanNullTerms(additionalData)
+            if lRDict not in checkDupLendRate:
+                checkDupLendRate.append(lRDict)
+                tiersList = [filterNullFromTiers]
+                filterNullFromLendingRate['tiers'] = tiersList
+                for k, v in filterNullFromAddData.items():
+                    filterNullFromLendingRate[k] = v
+                lendingRates.append(filterNullFromLendingRate)
+            else:
+                tiersList.append(filterNullFromTiers)
 
-    filterNullFromProductDetail['depositRates'] = depositRates
-    filterNullFromProductDetail['lendingRates'] = lendingRates
-    productDetailData = {
-        "data": filterNullFromProductDetail,
-        "links": {"self": "https://openbank.api.mystate.com.au/cds-au/v1/banking/products/" + productId}
-    }
-    return Response(productDetailData, headers={'x-v': headerXVersion})
+        filterNullFromProductDetail['depositRates'] = depositRates
+        filterNullFromProductDetail['lendingRates'] = lendingRates
+        productDetailData = {
+            "data": filterNullFromProductDetail,
+            "links": {"self": request.build_absolute_uri()}
+        }
+        return Response(productDetailData, headers={'x-v': request.headers.get('x-v')})
+    else:
+        return hasHeaderError
 
 @api_view(['PUT', 'DELETE'])
 def productUpdate(request, productId):
