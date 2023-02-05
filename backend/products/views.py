@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 
 
-# function to filter the null value from the dictionary
+# filter null value from the dictionary
 def cleanNullTerms(d):
     if isinstance(d, dict):
         return {
@@ -22,6 +22,7 @@ def cleanNullTerms(d):
         return [v for v in map(cleanNullTerms, d) if v]
     return d
 
+# generic format for 4xx errors
 def errorCode(code, title, detail):
     error = {
             "errors": [
@@ -35,6 +36,7 @@ def errorCode(code, title, detail):
         }
     return error
 
+# handle all combination of headers error
 def checkHeaderError(request):
     headerXV = request.headers.get('x-v')
     if 'x-v' not in request.headers:
@@ -47,26 +49,18 @@ def checkHeaderError(request):
         errorResponse = errorCode('Header/UnsupportedVersion', 'Unsupported Version', 'Requested x-v version is not supported')
         return Response(errorResponse, status=status.HTTP_406_NOT_ACCEPTABLE)
     else:
-        return True
+        return False
 
-# this method to be revisited for 404 not found in the api response
-def custom404(request, exception=None):
-    error = {
-            "errors": [
-                {
-                    "code": "urn:au-cds:error:cds-all:Resource/NotFound",
-                    "title": "Resource Not Found",
-                    "detail": "No matching route",
-                    "meta": {}
-                }
-            ]
-        }
-    return Response(error, status=status.HTTP_404_NOT_FOUND)
+# handle 404 not found for invalid urls
+@api_view()
+def resourceNotFoundError(request):
+    errorResponse = errorCode('Resource/NotFound', 'Resource Not Found', 'Requested resource is not available in the specification. No matching resource found for given API Request')
+    return Response(errorResponse, status=status.HTTP_404_NOT_FOUND)
 
 @api_view()
 def getProducts(request):
     hasHeaderError = checkHeaderError(request)
-    if hasHeaderError == True:
+    if hasHeaderError == False:
         paginator = PageNumberPagination()
         paginator.page_size = 2
         products = Product.objects.all()
@@ -153,14 +147,11 @@ def createProduct(request):
 @api_view()
 def getProductDetails(request, productId):
     hasHeaderError = checkHeaderError(request)
-    if hasHeaderError == True:
+    if hasHeaderError == False:
         try:
             product = Product.objects.get(productId=productId)
         except Product.DoesNotExist:
-            code = "Resource/Invalid"
-            title = "Invalid Resource"
-            detail = productId
-            errorResponse = errorCode(code, title, detail)
+            errorResponse = errorCode('Resource/Invalid', 'Invalid Resource', productId)
             return Response(errorResponse, status=status.HTTP_404_NOT_FOUND)
         prodSerializer = ProductSerializer(product, context={'request': request}).data
         productDetail = {
