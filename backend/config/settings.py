@@ -35,6 +35,8 @@ INSTALLED_APPS = [
   # 3rd party
   'rest_framework',
   'corsheaders',
+  'oauth',
+  'oauth2_provider',
 
   # Local
   'products',
@@ -142,3 +144,16 @@ CORS_ALLOWED_ORIGINS = [
 
 
 FILE_UPLOAD_PERMISSIONS=0o640
+
+OAUTH2_PROVIDER = {
+    'SCOPES': {'read': 'Read scope', 'write': 'Write scope', 'groups': 'Access to your groups'},
+    'ACCESS_TOKEN_EXPIRE_SECONDS': 30,
+    'REFRESH_TOKEN_EXPIRE_SECONDS': 36000,
+    'ROTATE_REFRESH_TOKEN': False,
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+    )
+}
