@@ -8,4 +8,4 @@ class ContactAdmin(admin.ModelAdmin):
   search_fields = ('address', 'email')
   list_per_page = 20
 
-admin.site.register(Contact, ContactAdmin)
+#admin.site.register(Contact, ContactAdmin)
