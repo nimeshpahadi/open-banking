@@ -11,7 +11,7 @@ class CustomerAdmin(admin.ModelAdmin):
   list_per_page = 20
 
 class CustomerPhoneNumberAdmin(admin.ModelAdmin):
-  list_display = ('full_number', 'purpose', 'last_modified_time')
+  list_display = ('full_number', 'purpose')
   #list_display_links = ('full_number', 'number')
   search_fields = ('full_number', 'number')
   list_per_page = 20

@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include, re_path
-from products import views
+from config import reusable_functions
 from oauth.views import UserList, UserDetails, GroupList
 
 
@@ -15,7 +15,7 @@ urlpatterns = [
   path('api/cds-au/v1/banking/', include('products.urls')),
   path('api/cds-au/v1/banking/', include('customers.urls')),
   path('contact/', include('contact.urls')),
-  re_path(r'^.*$', views.resourceNotFoundError),
+  re_path(r'^.*$', reusable_functions.resourceNotFoundError),
 ]
 
 if settings.DEBUG:

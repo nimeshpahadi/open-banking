@@ -35,13 +35,13 @@ INSTALLED_APPS = [
   # 3rd party
   'rest_framework',
   'corsheaders',
-  'oauth',
   'oauth2_provider',
 
   # Local
   'products',
   'customers',
   'contact',
+  'oauth',
 ]
 
 MIDDLEWARE = [
@@ -148,7 +148,7 @@ FILE_UPLOAD_PERMISSIONS=0o640
 
 OAUTH2_PROVIDER = {
     'SCOPES': {'read': 'Read scope', 'write': 'Write scope', 'groups': 'Access to your groups'},
-    'ACCESS_TOKEN_EXPIRE_SECONDS': 30,
+    'ACCESS_TOKEN_EXPIRE_SECONDS': 300,
     'REFRESH_TOKEN_EXPIRE_SECONDS': 36000,
     'ROTATE_REFRESH_TOKEN': False,
 }

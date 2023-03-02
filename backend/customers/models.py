@@ -33,7 +33,6 @@ class Customer(models.Model):
   is_preferred = models.BooleanField()
   purpose = models.CharField(max_length=120, null=True, blank=True)
   birth_date = models.DateField(null=True, blank=True)
-  last_modified_time = models.DateTimeField(null=True, blank=True)
   insert_time = models.DateTimeField()
 
   def __str__(self):
@@ -48,7 +47,6 @@ class CustomerPhoneNumber(models.Model):
   number = models.CharField(max_length=120, null=True, blank=True)
   extension = models.CharField(max_length=120, null=True, blank=True)
   full_number = models.CharField(max_length=120, null=True, blank=True)
-  last_modified_time = models.DateTimeField(null=True, blank=True)
   insert_time = models.DateTimeField()
 
   def __str__(self):
@@ -88,7 +86,6 @@ class CustomerPhysicalAddress(models.Model):
   paf_postcode = models.CharField(max_length=120, null=True, blank=True)
   paf_state = models.CharField(max_length=120, null=True, blank=True)
   purpose = models.CharField(max_length=120, null=True, blank=True)
-  last_modified_time = models.DateTimeField(null=True, blank=True)
   insert_time = models.DateTimeField()
 
   def __str__(self):

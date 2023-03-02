@@ -8,58 +8,12 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
+from config import reusable_functions
 
-
-# filter null value from the dictionary
-def cleanNullTerms(d):
-    if isinstance(d, dict):
-        return {
-            k: v 
-            for k, v in ((k, cleanNullTerms(v)) for k, v in d.items())
-            if v
-        }
-    if isinstance(d, list):
-        return [v for v in map(cleanNullTerms, d) if v]
-    return d
-
-# generic format for 4xx errors
-def errorCode(code, title, detail):
-    error = {
-            "errors": [
-                {
-                    "code": "urn:au-cds:error:cds-all:" + code,
-                    "title": title,
-                    "detail": detail,
-                    "meta": {}
-                }
-            ]
-        }
-    return error
-
-# handle all combination of headers error
-def checkHeaderError(request):
-    headerXV = request.headers.get('x-v')
-    if 'x-v' not in request.headers:
-        errorResponse = errorCode('Header/Missing', 'Missing Required Header', 'x-v')
-        return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
-    elif headerXV == "" or headerXV.isdigit() == False:
-        errorResponse = errorCode('Header/InvalidVersion', 'Invalid Version', 'Invalid x-v Requested')
-        return Response(errorResponse, status=status.HTTP_400_BAD_REQUEST)
-    elif headerXV != "3":
-        errorResponse = errorCode('Header/UnsupportedVersion', 'Unsupported Version', 'Requested x-v version is not supported')
-        return Response(errorResponse, status=status.HTTP_406_NOT_ACCEPTABLE)
-    else:
-        return False
-
-# handle 404 not found for invalid urls
-@api_view()
-def resourceNotFoundError(request):
-    errorResponse = errorCode('Resource/NotFound', 'Resource Not Found', 'Requested resource is not available in the specification. No matching resource found for given API Request')
-    return Response(errorResponse, status=status.HTTP_404_NOT_FOUND)
 
 @api_view()
 def getProducts(request):
-    hasHeaderError = checkHeaderError(request)
+    hasHeaderError = reusable_functions.checkHeaderError(request)
     if hasHeaderError == False:
         paginator = PageNumberPagination()
         paginator.page_size = 2
@@ -115,13 +69,13 @@ def getProducts(request):
                 }
             }
             productList.append(productDict)
-        filterNullFromProductList = cleanNullTerms(productList)
+        filterNullFromProductList = reusable_functions.cleanNullTerms(productList)
         links = {
             'self': request.build_absolute_uri(),
             'prev': paginator.get_previous_link(),
             'next': paginator.get_next_link()
         }
-        filterNullFromLinks = cleanNullTerms(links)
+        filterNullFromLinks = reusable_functions.cleanNullTerms(links)
         productListData = {
             "data": {
                 "products": filterNullFromProductList,
@@ -146,7 +100,7 @@ def createProduct(request):
 
 @api_view()
 def getProductDetails(request, productId):
-    hasHeaderError = checkHeaderError(request)
+    hasHeaderError = reusable_functions.checkHeaderError(request)
     if hasHeaderError == False:
         try:
             product = Product.objects.get(productId=productId)
@@ -174,7 +128,7 @@ def getProductDetails(request, productId):
                 "bundleUri": prodSerializer['additionalInformationBundleUri'],
             }
         }
-        filterNullFromProductDetail = cleanNullTerms(productDetail)
+        filterNullFromProductDetail = reusable_functions.cleanNullTerms(productDetail)
         lRModal = LendingRate.objects.filter(productId=productId)
         lRSerializer = LendingRateSerializer(lRModal, context={'request': request}, many=True).data
         lendingRates = []
@@ -215,7 +169,7 @@ def getProductDetails(request, productId):
                 "additionalInfo": item['tiersAdditionalInfo'],
                 "additionalInfoUri": item['tiersAdditionalInfoUri'],
             }
-            filterNullFromTiers = cleanNullTerms(tiers)
+            filterNullFromTiers = reusable_functions.cleanNullTerms(tiers)
             formattedLendRate = {
                 "lendingRateType": item['lendingRateType'],
                 "rate": item['rate'],
@@ -226,13 +180,13 @@ def getProductDetails(request, productId):
                 "repaymentType": item['repaymentType'],
                 "loanPurpose": item['loanPurpose'],
             }
-            filterNullFromLendingRate = cleanNullTerms(formattedLendRate)
+            filterNullFromLendingRate = reusable_functions.cleanNullTerms(formattedLendRate)
             additionalData = {
                 "additionalValue": item['additionalValue'],
                 "additionalInfo": item['additionalInfo'],
                 "additionalInfoUri": item['additionalInfoUri'],
             }
-            filterNullFromAddData = cleanNullTerms(additionalData)
+            filterNullFromAddData = reusable_functions.cleanNullTerms(additionalData)
             if lRDict not in checkDupLendRate:
                 checkDupLendRate.append(lRDict)
                 tiersList = [filterNullFromTiers]
